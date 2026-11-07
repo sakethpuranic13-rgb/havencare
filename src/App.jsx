@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect ,useMemo, useState } from 'react'
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, Check,
   CheckCircle2, ChevronDown, ClipboardCheck, Clock3, Droplets,
   House, LayoutDashboard, Leaf, LockKeyhole, Menu, MessageCircle,
-  Plus, ShieldCheck, Sparkles, Wrench, X, Zap
+  Plus, ShieldCheck, Sparkles, Wrench, X, Zap,LogOut
 } from 'lucide-react'
-
+import{supabase} from './lib/supabase'
 const initialRequests = [
   { id: 'HC-1042', title: 'Bathroom tap leak', type: 'Plumbing', date: 'Oct 18, 2026', status: 'Awaiting approval', cost: '₹1,250', icon: Droplets },
   { id: 'HC-1038', title: 'Monthly property inspection', type: 'Inspection', date: 'Oct 21, 2026', status: 'Scheduled', cost: 'Included in plan', icon: ClipboardCheck },
@@ -46,34 +46,141 @@ function Status({ status }) {
   const styles = {
     'Awaiting approval': 'bg-amber-50 text-amber-800 ring-amber-200',
     Scheduled: 'bg-blue-50 text-blue-800 ring-blue-200',
+    Accepted: 'bg-blue-50 text-blue-800 ring-blue-200',
+    'In progress': 'bg-violet-50 text-violet-800 ring-violet-200',
     Completed: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+    Cancelled: 'bg-red-50 text-red-800 ring-red-200',
     'Request received': 'bg-violet-50 text-violet-800 ring-violet-200',
   }
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${styles[status] || styles['Request received']}`}>{status}</span>
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${
+        styles[status] || styles['Request received']
+      }`}
+    >
+      {status}
+    </span>
+  )
 }
 
 function Header({ page, setPage, onBook, user, onLogout }) {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const nav = [
-    ['Home', 'home'],
-    ['Our services', 'services'],
-    [user?.role === 'worker' ? 'Worker dashboard' : 'My dashboard', 'dashboard'],
-  ]
-  return <header className="sticky top-0 z-40 border-b border-[#e9ebe4] bg-[#fbfaf6]/95 backdrop-blur-xl">
-    <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 lg:px-8">
-      <button onClick={() => setPage('home')} aria-label="HavenCare home"><Logo /></button>
-      <nav className="hidden items-center gap-8 md:flex">
-        {nav.map(([label, key]) => <button key={key} onClick={() => setPage(key)} className={`text-sm transition ${page === key ? 'font-semibold text-forest' : 'text-[#69766e] hover:text-forest'}`}>{label}</button>)}
-      </nav>
-      <div className="hidden items-center gap-3 md:flex"><span className="max-w-32 truncate text-xs text-[#69766e]">{user?.name}</span>{user?.role === 'homeowner' && <Button onClick={onBook}>Book an inspection <ArrowRight size={16} /></Button>}<Button variant="outline" onClick={onLogout} className="!px-4 !py-2.5">Log out</Button></div>
-      <button className="rounded-xl p-2 text-forest md:hidden" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">{mobileOpen ? <X /> : <Menu />}</button>
-    </div>
-    {mobileOpen && <div className="border-t border-[#e9ebe4] px-5 py-4 md:hidden">
-      <div className="flex flex-col gap-4">{nav.map(([label, key]) => <button key={key} onClick={() => { setPage(key); setMobileOpen(false) }} className="py-1 text-left text-sm font-medium text-forest">{label}</button>)}<Button onClick={() => { setMobileOpen(false); onBook() }}>Book an inspection <ArrowRight size={16} /></Button></div>
-    </div>}
-  </header>
-}
+  const isEmployee = user?.role === 'employee'
 
+  return (
+    <header className="sticky top-0 z-40 border-b border-[#e7eae3] bg-white/95 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
+
+        {/* LOGO */}
+        <button
+          onClick={() => {
+            if (isEmployee) {
+              setPage('dashboard')
+            } else {
+              setPage('home')
+            }
+          }}
+          className="flex items-center gap-2"
+        >
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-white">
+            <ShieldCheck size={18} />
+          </div>
+
+          <div className="text-left">
+            <div className="font-serif text-xl font-semibold tracking-tight text-forest">
+              HavenCare
+            </div>
+
+            <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#89928b]">
+              {isEmployee ? 'Employee Portal' : 'Home Care'}
+            </div>
+          </div>
+        </button>
+
+        {/* NAVIGATION */}
+        <nav className="hidden items-center gap-1 md:flex">
+
+          {/* HOMEOWNER NAVIGATION */}
+          {!isEmployee && (
+            <>
+              <button
+                onClick={() => setPage('home')}
+                className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                  page === 'home'
+                    ? 'bg-[#eaf0e4] text-forest'
+                    : 'text-[#738078] hover:bg-[#f5f6f0] hover:text-forest'
+                }`}
+              >
+                Home
+              </button>
+
+              <button
+                onClick={() => setPage('services')}
+                className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                  page === 'services'
+                    ? 'bg-[#eaf0e4] text-forest'
+                    : 'text-[#738078] hover:bg-[#f5f6f0] hover:text-forest'
+                }`}
+              >
+                Services
+              </button>
+            </>
+          )}
+
+          {/* DASHBOARD / MY JOBS */}
+          <button
+            onClick={() => setPage('dashboard')}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+              page === 'dashboard'
+                ? 'bg-[#eaf0e4] text-forest'
+                : 'text-[#738078] hover:bg-[#f5f6f0] hover:text-forest'
+            }`}
+          >
+            {isEmployee ? 'My Jobs' : 'Dashboard'}
+          </button>
+
+        </nav>
+
+        {/* RIGHT SIDE */}
+        <div className="flex items-center gap-3">
+
+          {/* HOMEOWNER REQUEST BUTTON */}
+          {!isEmployee && (
+            <Button
+              onClick={() => onBook()}
+              className="hidden sm:flex"
+            >
+              <Plus size={16} />
+              Request service
+            </Button>
+          )}
+
+          {/* USER */}
+          <div className="hidden text-right sm:block">
+            <div className="text-xs font-semibold text-forest">
+              {user?.name}
+            </div>
+
+            <div className="text-[10px] text-[#89928b]">
+              {isEmployee ? 'Maintenance Employee' : 'Homeowner'}
+            </div>
+          </div>
+
+          {/* LOGOUT */}
+          <button
+            onClick={onLogout}
+            className="grid h-9 w-9 place-items-center rounded-full border border-[#e1e5de] text-[#738078] transition hover:bg-[#f5f6f0] hover:text-forest"
+            title="Log out"
+          >
+            <LogOut size={16} />
+          </button>
+
+        </div>
+
+      </div>
+    </header>
+  )
+}
 function HomePage({ setPage, onBook }) {
   return <>
     <section className="relative overflow-hidden bg-cream">
@@ -184,52 +291,757 @@ function ServicesPage({ onBook }) {
 }
 
 function DashboardPage({ requests, setRequests, bookings, setBookings, onBook, user }) {
-  const [filter, setFilter] = useState('All')
-  const filtered = useMemo(() => filter === 'All' ? requests : requests.filter(r => r.status === filter), [requests, filter])
-  const approve = (id) => setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Scheduled' } : r))
-  return <main className="min-h-[75vh] bg-[#f7f8f4]">
-    <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-14">
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div><p className="eyebrow">{user?.role === 'worker' ? 'MAINTENANCE WORKER PORTAL · DEMO' : 'HOMEOWNER PORTAL · DEMO'}</p><h1 className="font-serif text-4xl tracking-tight text-forest sm:text-5xl">Hello, {user?.name || 'there'}.</h1><p className="mt-3 text-sm text-[#738078]">{user?.role === 'worker' ? 'Review the sample maintenance jobs in this demo.' : "Here's what's happening with your home."}</p></div>
-        {user?.role === 'homeowner' && <Button onClick={() => onBook()}><Plus size={17} /> Request a service</Button>}
-      </div>
-      <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: 'Property status', value: 'Looking good', sub: 'Last checked Oct 10', icon: House, tint: 'bg-[#eaf0e4]' },
-          { label: 'Next visit', value: 'Oct 21', sub: 'Routine inspection', icon: CalendarDays, tint: 'bg-[#e9eef8]' },
-          { label: 'Open requests', value: String(requests.filter(r => r.status !== 'Completed').length), sub: 'Including pending approval', icon: ClipboardCheck, tint: 'bg-[#f6ecda]' },
-          { label: 'Care plan', value: 'Essential', sub: 'Demo plan · Monthly checks', icon: ShieldCheck, tint: 'bg-[#f0e9f6]' },
-        ].map(({ label, value, sub, icon: Icon, tint }) => <div key={label} className="rounded-2xl border border-[#e7eae3] bg-white p-5"><div className="flex items-center justify-between"><span className="text-xs font-medium text-[#738078]">{label}</span><div className={`grid h-9 w-9 place-items-center rounded-xl ${tint} text-forest`}><Icon size={18} /></div></div><div className="mt-4 font-serif text-2xl text-forest">{value}</div><div className="mt-1 text-[11px] text-[#89928b]">{sub}</div></div>)}
-      </div>
-      <div className="mt-7 grid gap-6 lg:grid-cols-[1.55fr_.85fr]">
-        <section className="rounded-2xl border border-[#e7eae3] bg-white p-5 sm:p-7">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h2 className="font-serif text-2xl text-forest">{user?.role === 'worker' ? 'Sample maintenance jobs' : 'Maintenance requests'}</h2><p className="mt-1 text-xs text-[#89928b]">Demo data · changes are stored in this browser only</p></div><select value={filter} onChange={e => setFilter(e.target.value)} className="rounded-full border border-[#e0e5dc] bg-white px-3 py-2 text-xs text-forest outline-none"><option>All</option><option>Awaiting approval</option><option>Scheduled</option><option>Completed</option><option>Request received</option></select></div>
-          <div className="mt-5 divide-y divide-[#edf0e9]">
-            {filtered.map(({ id, title, type, date, status, cost, icon: Icon }) => <div key={id} className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#f0f3ec] text-forest"><Icon size={19} /></div><div><div className="font-semibold text-ink">{title}</div><div className="mt-1 text-xs text-[#89928b]">{id} · {type} · {date}</div><div className="mt-2"><Status status={status} /></div></div></div>
-              <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end"><span className="text-sm font-semibold text-forest">{cost}</span>{user?.role === 'homeowner' && status === 'Awaiting approval' && <button onClick={() => approve(id)} className="text-xs font-semibold text-moss underline underline-offset-4">Approve estimate</button>}</div>
-            </div>)}
-            {filtered.length === 0 && <p className="py-8 text-sm text-[#89928b]">No requests in this category.</p>}
-          </div>
-        </section>
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-[#e7eae3] bg-white p-5 sm:p-6">
-            <div className="flex items-center justify-between"><h2 className="font-serif text-xl text-forest">Upcoming visits</h2><CalendarDays size={19} className="text-moss" /></div>
-            {bookings.length === 0 ? <p className="mt-4 text-sm text-[#89928b]">No upcoming visits yet.</p> : bookings.map(b => <div key={b.id} className="mt-5 rounded-xl bg-[#f5f6f0] p-4"><div className="flex items-center gap-2 text-xs font-semibold text-moss"><Clock3 size={14} /> {new Date(`${b.date}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-2 font-semibold text-forest">{b.service}</div><p className="mt-1 text-xs leading-5 text-[#758078]">{b.notes || 'Service request received. We will confirm details.'}</p></div>)}
-            <button onClick={onBook} className="mt-4 flex items-center gap-2 text-xs font-semibold text-forest">Schedule another visit <ArrowRight size={14} /></button>
-          </section>
-          <section className="overflow-hidden rounded-2xl bg-forest p-6 text-white">
-            <div className="flex items-center gap-2 text-white/65"><ShieldCheck size={17} /><span className="text-xs font-semibold uppercase tracking-[0.12em]">Your control matters</span></div>
-            <h3 className="mt-4 font-serif text-2xl">No surprise repairs.</h3><p className="mt-2 text-sm leading-6 text-white/65">Review recommended work and estimated costs before giving the go-ahead.</p>
-            <div className="mt-5 flex items-center gap-2 text-xs font-medium text-[#dbe8d4]"><Check size={15} /> Owner approval first</div>
-          </section>
-        </div>
-      </div>
-      <p className="mt-6 text-center text-[11px] text-[#9aa29b]">Prototype only · Names, property status, service requests and prices shown are illustrative sample data.</p>
-    </div>
-  </main>
-}
+  if (user?.role === 'employee') {
+    return (
+      <EmployeeDashboard
+        requests={requests}
+        setRequests={setRequests}
+        user={user}
+      />
+    )
+  }
 
+  return (
+    <HomeownerDashboard
+      requests={requests}
+      setRequests={setRequests}
+      bookings={bookings}
+      setBookings={setBookings}
+      onBook={onBook}
+      user={user}
+    />
+  )
+}
+function HomeownerDashboard({
+  requests,
+  setRequests,
+  bookings,
+  setBookings,
+  onBook,
+  user
+}) {
+  const [filter, setFilter] = useState('All')
+
+  // Convert Supabase request data into the format
+  // this original dashboard was designed to use.
+  const displayRequests = useMemo(() => {
+    return requests.map(request => ({
+      ...request,
+
+      title: request.title || request.service_type,
+
+      type: request.service_type,
+
+      date: request.preferred_date
+        ? new Date(`${request.preferred_date}T12:00:00`)
+            .toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            })
+        : 'Date not specified',
+
+      cost: '—',
+
+      icon: Wrench,
+
+      displayStatus:
+        request.status === 'pending'
+          ? 'Awaiting approval'
+          : request.status === 'assigned'
+            ? 'Scheduled'
+            : request.status === 'accepted'
+              ? 'Scheduled'
+              : request.status === 'in_progress'
+                ? 'In progress'
+                : request.status === 'completed'
+                  ? 'Completed'
+                  : request.status === 'cancelled'
+                    ? 'Cancelled'
+                    : request.status
+    }))
+  }, [requests])
+
+  const filtered = useMemo(
+    () =>
+      filter === 'All'
+        ? displayRequests
+        : displayRequests.filter(
+            r => r.displayStatus === filter
+          ),
+    [displayRequests, filter]
+  )
+
+  const approve = async (id) => {
+    const { data, error } = await supabase
+      .from('maintenance_requests')
+      .update({
+        status: 'accepted'
+      })
+      .eq('id', id)
+      .eq('homeowner_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error approving request:', error)
+      alert(`Could not approve request: ${error.message}`)
+      return
+    }
+
+    setRequests(prev =>
+      prev.map(r =>
+        r.id === id
+          ? { ...r, status: data.status }
+          : r
+      )
+    )
+  }
+
+  return (
+    <main className="min-h-[75vh] bg-[#f7f8f4]">
+      <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-14">
+
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <div>
+            <p className="eyebrow">
+              HOMEOWNER PORTAL
+            </p>
+
+            <h1 className="font-serif text-4xl tracking-tight text-forest sm:text-5xl">
+              Hello, {user?.name || 'there'}.
+            </h1>
+
+            <p className="mt-3 text-sm text-[#738078]">
+              Here's what's happening with your home.
+            </p>
+          </div>
+
+          <Button onClick={() => onBook()}>
+            <Plus size={17} />
+            Request a service
+          </Button>
+        </div>
+
+        <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+          {[
+            {
+              label: 'Property status',
+              value: 'Looking good',
+              sub: 'Last checked Oct 10',
+              icon: House,
+              tint: 'bg-[#eaf0e4]'
+            },
+            {
+              label: 'Next visit',
+              value: 'Oct 21',
+              sub: 'Routine inspection',
+              icon: CalendarDays,
+              tint: 'bg-[#e9eef8]'
+            },
+            {
+              label: 'Open requests',
+              value: String(
+                requests.filter(
+                  r =>
+                    r.status !== 'completed' &&
+                    r.status !== 'cancelled'
+                ).length
+              ),
+              sub: 'Active maintenance requests',
+              icon: ClipboardCheck,
+              tint: 'bg-[#f6ecda]'
+            },
+            {
+              label: 'Care plan',
+              value: 'Essential',
+              sub: 'Monthly checks',
+              icon: ShieldCheck,
+              tint: 'bg-[#f0e9f6]'
+            }
+          ].map(({ label, value, sub, icon: Icon, tint }) => (
+
+            <div
+              key={label}
+              className="rounded-2xl border border-[#e7eae3] bg-white p-5"
+            >
+
+              <div className="flex items-center justify-between">
+
+                <span className="text-xs font-medium text-[#738078]">
+                  {label}
+                </span>
+
+                <div
+                  className={`grid h-9 w-9 place-items-center rounded-xl ${tint} text-forest`}
+                >
+                  <Icon size={18} />
+                </div>
+
+              </div>
+
+              <div className="mt-4 font-serif text-2xl text-forest">
+                {value}
+              </div>
+
+              <div className="mt-1 text-[11px] text-[#89928b]">
+                {sub}
+              </div>
+
+            </div>
+
+          ))}
+
+        </div>
+
+        <div className="mt-7 grid gap-6 lg:grid-cols-[1.55fr_.85fr]">
+
+          <section className="rounded-2xl border border-[#e7eae3] bg-white p-5 sm:p-7">
+
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+
+              <div>
+                <h2 className="font-serif text-2xl text-forest">
+                  Maintenance requests
+                </h2>
+
+                <p className="mt-1 text-xs text-[#89928b]">
+                  Your submitted service requests
+                </p>
+              </div>
+
+              <select
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+                className="rounded-full border border-[#e0e5dc] bg-white px-3 py-2 text-xs text-forest outline-none"
+              >
+                <option>All</option>
+                <option>Awaiting approval</option>
+                <option>Scheduled</option>
+                <option>Accepted</option>
+                <option>In progress</option>
+                <option>Completed</option>
+                <option>Cancelled</option>
+              </select>
+
+            </div>
+
+            <div className="mt-5 divide-y divide-[#edf0e9]">
+
+              {filtered.map(
+                ({
+                  id,
+                  title,
+                  type,
+                  date,
+                  displayStatus,
+                  cost,
+                  icon: Icon
+                }) => (
+
+                  <div
+                    key={id}
+                    className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between"
+                  >
+
+                    <div className="flex gap-3">
+
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#f0f3ec] text-forest">
+                        <Icon size={19} />
+                      </div>
+
+                      <div>
+
+                        <div className="font-semibold text-ink">
+                          {title}
+                        </div>
+
+                        <div className="mt-1 text-xs text-[#89928b]">
+                          {id} · {type} · {date}
+                        </div>
+
+                        <div className="mt-2">
+                          <Status status={displayStatus} />
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
+
+                      <span className="text-sm font-semibold text-forest">
+                        {cost}
+                      </span>
+
+                      {displayStatus === 'Awaiting approval' && (
+                        <button
+                          onClick={() => approve(id)}
+                          className="text-xs font-semibold text-moss underline underline-offset-4"
+                        >
+                          Approve estimate
+                        </button>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                )
+              )}
+
+              {filtered.length === 0 && (
+                <p className="py-8 text-sm text-[#89928b]">
+                  No requests in this category.
+                </p>
+              )}
+
+            </div>
+
+          </section>
+
+          <div className="space-y-6">
+
+            <section className="rounded-2xl border border-[#e7eae3] bg-white p-5 sm:p-6">
+
+              <div className="flex items-center justify-between">
+
+                <h2 className="font-serif text-xl text-forest">
+                  Upcoming visits
+                </h2>
+
+                <CalendarDays size={19} className="text-moss" />
+
+              </div>
+
+              {bookings.length === 0 ? (
+
+                <p className="mt-4 text-sm text-[#89928b]">
+                  No upcoming visits yet.
+                </p>
+
+              ) : (
+
+                bookings.map(b => (
+
+                  <div
+                    key={b.id}
+                    className="mt-5 rounded-xl bg-[#f5f6f0] p-4"
+                  >
+
+                    <div className="flex items-center gap-2 text-xs font-semibold text-moss">
+
+                      <Clock3 size={14} />
+
+                      {new Date(
+                        `${b.date}T12:00:00`
+                      ).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+
+                    </div>
+
+                    <div className="mt-2 font-semibold text-forest">
+                      {b.service}
+                    </div>
+
+                    <p className="mt-1 text-xs leading-5 text-[#758078]">
+                      {b.notes ||
+                        'Service request received. We will confirm details.'}
+                    </p>
+
+                  </div>
+
+                ))
+
+              )}
+
+              <button
+                onClick={onBook}
+                className="mt-4 flex items-center gap-2 text-xs font-semibold text-forest"
+              >
+                Schedule another visit
+                <ArrowRight size={14} />
+              </button>
+
+            </section>
+
+            <section className="overflow-hidden rounded-2xl bg-forest p-6 text-white">
+
+              <div className="flex items-center gap-2 text-white/65">
+
+                <ShieldCheck size={17} />
+
+                <span className="text-xs font-semibold uppercase tracking-[0.12em]">
+                  Your control matters
+                </span>
+
+              </div>
+
+              <h3 className="mt-4 font-serif text-2xl">
+                No surprise repairs.
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-white/65">
+                Review recommended work and estimated costs before giving the go-ahead.
+              </p>
+
+              <div className="mt-5 flex items-center gap-2 text-xs font-medium text-[#dbe8d4]">
+                <Check size={15} />
+                Owner approval first
+              </div>
+
+            </section>
+
+          </div>
+
+        </div>
+
+        <p className="mt-6 text-center text-[11px] text-[#9aa29b]">
+          HavenCare homeowner portal
+        </p>
+
+      </div>
+    </main>
+  )
+}
+function EmployeeDashboard({ requests, setRequests, user }) {
+  const [filter, setFilter] = useState('All')
+
+  const filtered = useMemo(() => {
+    if (filter === 'All') return requests
+
+    return requests.filter(
+      request => request.status === filter
+    )
+  }, [requests, filter])
+
+  const updateStatus = async (id, status) => {
+    const { data, error } = await supabase
+      .from('maintenance_requests')
+      .update({
+        status: status
+      })
+      .eq('id', id)
+      .eq('employee_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating request:', error)
+      alert(`Could not update job: ${error.message}`)
+      return
+    }
+
+    setRequests(prev =>
+      prev.map(request =>
+        request.id === id
+          ? { ...request, status: data.status }
+          : request
+      )
+    )
+  }
+
+  const assignedCount = requests.length
+
+  const activeCount = requests.filter(
+    r =>
+      r.status === 'accepted' ||
+      r.status === 'in_progress'
+  ).length
+
+  const completedCount = requests.filter(
+    r => r.status === 'completed'
+  ).length
+
+  return (
+    <main className="min-h-[75vh] bg-[#f7f8f4]">
+      <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-14">
+
+        {/* HEADER */}
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="eyebrow">
+              MAINTENANCE WORKER PORTAL
+            </p>
+
+            <h1 className="mt-2 font-serif text-4xl text-forest">
+              My Jobs
+            </h1>
+
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[#738078]">
+              Manage your assigned maintenance requests and
+              keep homeowners updated on their service.
+            </p>
+          </div>
+
+          {/* FILTER */}
+          <div>
+            <label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+              Filter jobs
+            </label>
+
+            <select
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              className="rounded-xl border border-[#dfe4dc] bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-forest"
+            >
+              <option value="All">All</option>
+              <option value="assigned">Assigned</option>
+              <option value="accepted">Accepted</option>
+              <option value="in_progress">
+                In progress
+              </option>
+              <option value="completed">
+                Completed
+              </option>
+            </select>
+          </div>
+        </div>
+
+        {/* STATS */}
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+
+          <div className="rounded-2xl border border-[#e7eae3] bg-white p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                  Assigned jobs
+                </p>
+
+                <p className="mt-2 text-3xl font-semibold text-forest">
+                  {assignedCount}
+                </p>
+              </div>
+
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#eaf0e4] text-forest">
+                <ClipboardCheck size={20} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#e7eae3] bg-white p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                  Active jobs
+                </p>
+
+                <p className="mt-2 text-3xl font-semibold text-forest">
+                  {activeCount}
+                </p>
+              </div>
+
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#e9eef8] text-forest">
+                <Clock3 size={20} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#e7eae3] bg-white p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                  Completed
+                </p>
+
+                <p className="mt-2 text-3xl font-semibold text-forest">
+                  {completedCount}
+                </p>
+              </div>
+
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#eaf4ed] text-forest">
+                <CheckCircle2 size={20} />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* JOB LIST */}
+        <div className="mt-8">
+
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-2xl text-forest">
+                Assigned maintenance requests
+              </h2>
+
+              <p className="mt-1 text-xs text-[#89928b]">
+                Requests assigned to your employee account.
+              </p>
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-[#e7eae3] bg-white p-10 text-center">
+
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f0f2ed] text-[#89928b]">
+                <ClipboardCheck size={24} />
+              </div>
+
+              <h3 className="mt-4 font-serif text-xl text-forest">
+                No jobs found
+              </h3>
+
+              <p className="mt-2 text-sm text-[#89928b]">
+                There are currently no maintenance requests
+                matching this filter.
+              </p>
+
+            </div>
+          ) : (
+            <div className="grid gap-5">
+
+              {filtered.map(request => (
+
+                <div
+                  key={request.id}
+                  className="rounded-2xl border border-[#e7eae3] bg-white p-6 shadow-sm"
+                >
+
+                  {/* TOP */}
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+
+                        <h3 className="font-serif text-xl text-forest">
+                          {request.title}
+                        </h3>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                            request.status === 'assigned'
+                              ? 'bg-[#fff4df] text-[#9a6b16]'
+                              : request.status === 'accepted'
+                              ? 'bg-[#e9eef8] text-[#536b94]'
+                              : request.status === 'in_progress'
+                              ? 'bg-[#eaf0e4] text-forest'
+                              : request.status === 'completed'
+                              ? 'bg-[#e7f3eb] text-[#3f7653]'
+                              : 'bg-[#f0f2ed] text-[#738078]'
+                          }`}
+                        >
+                          {request.status === 'in_progress'
+                            ? 'In progress'
+                            : request.status}
+                        </span>
+
+                      </div>
+
+                      <p className="mt-2 text-sm text-[#738078]">
+                        {request.description || 'No description provided.'}
+                      </p>
+                    </div>
+
+                  </div>
+
+                  {/* DETAILS */}
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+
+                    <div className="rounded-xl bg-[#f5f6f0] p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                        Service
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-forest">
+                        {request.service_type}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-[#f5f6f0] p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                        Preferred date
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-forest">
+                        {request.preferred_date || 'Not specified'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-[#f5f6f0] p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                        Location
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-forest">
+                        {request.location || 'Not specified'}
+                      </p>
+                    </div>
+
+                  </div>
+
+                  {/* ACTIONS */}
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+
+                    {request.status === 'assigned' && (
+                      <button
+                        onClick={() =>
+                          updateStatus(
+                            request.id,
+                            'accepted'
+                          )
+                        }
+                        className="rounded-xl bg-forest px-5 py-2.5 text-xs font-semibold text-white transition hover:opacity-90"
+                      >
+                        Accept job
+                      </button>
+                    )}
+
+                    {request.status === 'accepted' && (
+                      <button
+                        onClick={() =>
+                          updateStatus(
+                            request.id,
+                            'in_progress'
+                          )
+                        }
+                        className="rounded-xl bg-forest px-5 py-2.5 text-xs font-semibold text-white transition hover:opacity-90"
+                      >
+                        Start work
+                      </button>
+                    )}
+
+                    {request.status === 'in_progress' && (
+                      <button
+                        onClick={() =>
+                          updateStatus(
+                            request.id,
+                            'completed'
+                          )
+                        }
+                        className="rounded-xl bg-forest px-5 py-2.5 text-xs font-semibold text-white transition hover:opacity-90"
+                      >
+                        Mark completed
+                      </button>
+                    )}
+
+                    {request.status === 'completed' && (
+                      <span className="flex items-center gap-2 text-xs font-semibold text-[#4f795e]">
+                        <CheckCircle2 size={16} />
+                        Job completed
+                      </span>
+                    )}
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+          )}
+
+        </div>
+
+      </div>
+    </main>
+  )
+}
 function BookingModal({ open, onClose, preselected, onSubmit }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', location: '', service: preselected || 'Routine inspections', date: '', notes: '' })
   const [sent, setSent] = useState(false)
@@ -270,68 +1082,713 @@ function AuthPage({ onLogin }) {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('homeowner')
   const [error, setError] = useState('')
-  const submit = (e) => {
+  const [loading, setLoading] = useState(false)
+
+  const submit = async (e) => {
     e.preventDefault()
     setError('')
-    const key = 'havencare_demo_accounts'
-    const accounts = JSON.parse(localStorage.getItem(key) || '[]')
+    setLoading(true)
+
     const normalizedEmail = email.trim().toLowerCase()
+
     if (mode === 'signup') {
-      if (accounts.some(a => a.email === normalizedEmail)) { setError('An account with this email already exists. Please log in.'); return }
-      const account = { name: name.trim(), email: normalizedEmail, password, role }
-      accounts.push(account)
-      localStorage.setItem(key, JSON.stringify(accounts))
-      onLogin({ name: account.name, email: account.email, role: account.role })
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+      })
+
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      if (!data.user) {
+        setError('Account could not be created.')
+        setLoading(false)
+        return
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          name: name.trim(),
+          email: normalizedEmail,
+          role,
+        })
+
+      if (profileError) {
+        setError(profileError.message)
+        setLoading(false)
+        return
+      }
+
+      onLogin({
+        id: data.user.id,
+        name: name.trim(),
+        email: normalizedEmail,
+        role,
+      })
     } else {
-      const account = accounts.find(a => a.email === normalizedEmail && a.password === password)
-      if (!account) { setError('Email or password is incorrect. If this is your first visit, create an account.'); return }
-      onLogin({ name: account.name, email: account.email, role: account.role })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      })
+
+      if (error) {
+        setError('Email or password is incorrect.')
+        setLoading(false)
+        return
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, name, email, role')
+        .eq('id', data.user.id)
+        .single()
+
+      if (profileError) {
+        setError('Account profile could not be loaded.')
+        setLoading(false)
+        return
+      }
+
+      onLogin(profile)
     }
+
+    setLoading(false)
   }
+
   return <main className="flex min-h-screen items-center justify-center bg-[#f5f6f0] px-4 py-10">
     <div className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-[#e6e9e1] bg-white shadow-soft md:grid-cols-2">
-      <div className="flex flex-col justify-between bg-forest p-8 text-white sm:p-12"><Logo light /><div className="py-12"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c6d6bd]">Your home, cared for</p><h1 className="mt-4 font-serif text-4xl leading-tight sm:text-5xl">Good care begins with a little peace of mind.</h1><p className="mt-5 max-w-sm text-sm leading-6 text-white/65">Create a HavenCare demo account to explore the homeowner or maintenance worker experience.</p></div><p className="text-xs text-white/45">Demo prototype · Not a secure production account system</p></div>
-      <div className="p-7 sm:p-12"><p className="eyebrow">HAVENCARE ACCOUNT</p><h2 className="mt-2 font-serif text-3xl text-forest">{mode === 'signup' ? 'Create your account' : 'Welcome back'}</h2><p className="mt-2 text-sm leading-6 text-[#738078]">{mode === 'signup' ? 'Choose how you want to use HavenCare.' : 'Log in with the account you created on this browser.'}</p>
+      <div className="flex flex-col justify-between bg-forest p-8 text-white sm:p-12">
+        <Logo light />
+
+        <div className="py-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c6d6bd]">
+            Your home, cared for
+          </p>
+
+          <h1 className="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
+            Good care begins with a little peace of mind.
+          </h1>
+
+          <p className="mt-5 max-w-sm text-sm leading-6 text-white/65">
+            Create a HavenCare account to explore the homeowner or maintenance worker experience.
+          </p>
+        </div>
+
+        <p className="text-xs text-white/45">
+          HavenCare · Cloud-connected prototype
+        </p>
+      </div>
+
+      <div className="p-7 sm:p-12">
+        <p className="eyebrow">HAVENCARE ACCOUNT</p>
+
+        <h2 className="mt-2 font-serif text-3xl text-forest">
+          {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-[#738078]">
+          {mode === 'signup'
+            ? 'Choose how you want to use HavenCare.'
+            : 'Log in to your HavenCare account.'}
+        </p>
+
         <form onSubmit={submit} className="mt-7 space-y-4">
-          {mode === 'signup' && <><label className="field-label">Full name<input required value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="field-input" /></label><label className="field-label">I am a<select value={role} onChange={e => setRole(e.target.value)} className="field-input"><option value="homeowner">Homeowner</option><option value="worker">Maintenance worker</option></select></label></>}
-          <label className="field-label">Email address<input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="field-input" /></label>
-          <label className="field-label">Password<input required minLength={4} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 4 characters for this demo" className="field-input" /></label>
-          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-forest px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#245542]">{mode === 'signup' ? 'Create demo account' : 'Log in'} <ArrowRight size={16} /></button>
+
+          {mode === 'signup' && (
+            <>
+              <label className="field-label">
+                Full name
+                <input
+                  required
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Your name"
+                  className="field-input"
+                />
+              </label>
+
+              <label className="field-label">
+                I am a
+                <select
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                  className="field-input"
+                >
+                  <option value="homeowner">Homeowner</option>
+                  <option value="employee">Maintenance employee</option>
+                </select>
+              </label>
+            </>
+          )}
+
+          <label className="field-label">
+            Email address
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="field-input"
+            />
+          </label>
+
+          <label className="field-label">
+            Password
+            <input
+              required
+              minLength={6}
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="field-input"
+            />
+          </label>
+
+          {error && (
+            <p
+              role="alert"
+              className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-forest px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#245542] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading
+              ? 'Please wait...'
+              : mode === 'signup'
+                ? 'Create account'
+                : 'Log in'}
+
+            {!loading && <ArrowRight size={16} />}
+          </button>
         </form>
-        <p className="mt-6 text-center text-sm text-[#738078]">{mode === 'signup' ? 'Already have an account?' : 'New to HavenCare?'} <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError('') }} className="font-semibold text-forest underline underline-offset-4">{mode === 'signup' ? 'Log in' : 'Create an account'}</button></p>
-        <div className="mt-6 rounded-xl bg-[#f5f6f0] p-3 text-xs leading-5 text-[#738078]"><LockKeyhole size={14} className="mr-1 inline" /> Demo only: accounts are saved in this browser's local storage. Passwords are not securely protected, and accounts won't sync across devices or browsers. Do not use a real password.</div>
+
+        <p className="mt-6 text-center text-sm text-[#738078]">
+          {mode === 'signup'
+            ? 'Already have an account?'
+            : 'New to HavenCare?'}
+
+          {' '}
+
+          <button
+            onClick={() => {
+              setMode(mode === 'signup' ? 'login' : 'signup')
+              setError('')
+            }}
+            className="font-semibold text-forest underline underline-offset-4"
+          >
+            {mode === 'signup' ? 'Log in' : 'Create an account'}
+          </button>
+        </p>
+
+        <div className="mt-6 rounded-xl bg-[#f5f6f0] p-3 text-xs leading-5 text-[#738078]">
+          <LockKeyhole size={14} className="mr-1 inline" />
+          Your account is securely handled by Supabase Authentication.
+        </div>
       </div>
     </div>
   </main>
 }
 
 function App() {
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('havencare_demo_session') || 'null') } catch { return null }
-  })
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
   const [page, setPage] = useState('home')
+
   const [bookingOpen, setBookingOpen] = useState(false)
-  const [preselected, setPreselected] = useState('Routine inspections')
+
+  const [preselected, setPreselected] = useState(
+    'Routine inspections'
+  )
+
   const [requests, setRequests] = useState(initialRequests)
+
   const [bookings, setBookings] = useState(initialBookings)
-  const onLogin = (account) => { localStorage.setItem('havencare_demo_session', JSON.stringify(account)); setUser(account); setPage('home') }
-  const onLogout = () => { localStorage.removeItem('havencare_demo_session'); setUser(null); setPage('home'); setBookingOpen(false) }
-  const onBook = (service) => { setPreselected(service || 'Routine inspections'); setBookingOpen(true) }
-  const submitBooking = (form) => {
-    const id = `HC-${1043 + bookings.length}`
-    const booking = { id, service: form.service, date: form.date || 'Date to be confirmed', notes: `${form.location}${form.notes ? ` · ${form.notes}` : ''}` }
-    setBookings(prev => [booking, ...prev])
-    setRequests(prev => [{ id, title: form.service, type: 'New request', date: form.date || 'To be confirmed', status: 'Request received', cost: 'Estimate pending', icon: ClipboardCheck }, ...prev])
+
+  // --------------------------------------------------
+  // GET CURRENT SUPABASE SESSION
+  // --------------------------------------------------
+
+  useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+
+      if (session?.user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('id, name, email, role')
+          .eq('id', session.user.id)
+          .single()
+
+        if (error) {
+          console.error('Could not load profile:', error)
+        }
+
+        if (profile) {
+          setUser(profile)
+
+          // Employees always enter their work dashboard
+          if (profile.role === 'employee') {
+            setPage('dashboard')
+          } else {
+            setPage('home')
+          }
+        }
+      }
+
+      setLoading(false)
+    }
+
+    getSession()
+
+    // ------------------------------------------------
+    // LISTEN FOR AUTH CHANGES
+    // ------------------------------------------------
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+
+        if (session?.user) {
+
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('id, name, email, role')
+            .eq('id', session.user.id)
+            .single()
+
+          if (error) {
+            console.error('Could not load profile:', error)
+          }
+
+          if (profile) {
+            setUser(profile)
+
+            // Role-based landing page
+            if (profile.role === 'employee') {
+              setPage('dashboard')
+            } else {
+              setPage('home')
+            }
+          }
+
+        } else {
+
+          setUser(null)
+          setPage('home')
+
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+    // --------------------------------------------------
+  // LOAD MAINTENANCE REQUESTS
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (!user) return
+
+    const loadRequests = async () => {
+      let query = supabase
+        .from('maintenance_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      // Homeowners see their own requests
+      if (user.role === 'homeowner') {
+        query = query.eq('homeowner_id', user.id)
+      }
+
+      // Employees see requests assigned to them
+      if (user.role === 'employee') {
+        query = query.eq('employee_id', user.id)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error(
+          'Could not load maintenance requests:',
+          error
+        )
+        return
+      }
+
+      setRequests(data || [])
+    }
+
+    loadRequests()
+  }, [user])
+
+  
+  // --------------------------------------------------
+  // LOGIN
+  // --------------------------------------------------
+
+  const onLogin = (account) => {
+    setUser(account)
+
+    if (account.role === 'employee') {
+      setPage('dashboard')
+    } else {
+      setPage('home')
+    }
   }
-  if (!user) return <AuthPage onLogin={onLogin} />
-  return <div className="min-h-screen bg-white text-ink">
-    <Header page={page} setPage={setPage} onBook={() => onBook()} user={user} onLogout={onLogout} />
-    {page === 'home' && <HomePage setPage={setPage} onBook={onBook} />}
-    {page === 'services' && <ServicesPage onBook={onBook} />}
-    {page === 'dashboard' && <DashboardPage requests={requests} setRequests={setRequests} bookings={bookings} setBookings={setBookings} onBook={onBook} user={user} />}
-    <Footer setPage={setPage} />
-    <BookingModal key={preselected} open={bookingOpen} onClose={() => setBookingOpen(false)} preselected={preselected} onSubmit={submitBooking} />
-  </div>
+
+  // --------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------
+
+  const onLogout = async () => {
+    await supabase.auth.signOut()
+
+    setUser(null)
+    setPage('home')
+    setBookingOpen(false)
+  }
+
+  // --------------------------------------------------
+  // OPEN BOOKING MODAL
+  // --------------------------------------------------
+
+  const onBook = (service) => {
+
+    // Employees should never create homeowner
+    // service requests.
+    if (user?.role === 'employee') {
+      return
+    }
+
+    setPreselected(
+      service || 'Routine inspections'
+    )
+
+    setBookingOpen(true)
+  }
+
+  // --------------------------------------------------
+  // SUBMIT MAINTENANCE REQUEST
+  // --------------------------------------------------
+
+  const submitBooking = async (form) => {
+
+    if (!user) {
+      return
+    }
+
+    // Only homeowners can create requests
+    if (user.role !== 'homeowner') {
+      return
+    }
+
+   const { data, error } = await supabase
+  .from('maintenance_requests')
+  .insert({
+    homeowner_id: user.id,
+    employee_id: '30135b4a-00f5-4346-b26a-4949ebda8df3',
+    title: form.service,
+    description: form.notes || '',
+    service_type: form.service,
+    location: form.location,
+    preferred_date: form.date || null,
+    status: 'assigned'
+  
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error(
+        'Error creating maintenance request:',
+        error
+      )
+
+      alert(
+        `Could not submit request: ${error.message}`
+      )
+
+      return
+    }
+
+    console.log(
+      'Maintenance request created:',
+      data
+    )
+
+    setBookingOpen(false)
+
+    alert(
+      'Maintenance request submitted successfully!'
+    )
+  }
+
+  // --------------------------------------------------
+  // LOADING SCREEN
+  // --------------------------------------------------
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f6f0]">
+
+        <div className="text-center">
+
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-forest text-white">
+            <ShieldCheck size={22} />
+          </div>
+
+          <p className="mt-4 text-sm text-[#738078]">
+            Loading HavenCare...
+          </p>
+
+        </div>
+
+      </div>
+    )
+  }
+
+  // --------------------------------------------------
+  // NOT LOGGED IN
+  // --------------------------------------------------
+
+  if (!user) {
+    return (
+      <AuthPage onLogin={onLogin} />
+    )
+  }
+
+  // --------------------------------------------------
+  // LOGGED IN APPLICATION
+  // --------------------------------------------------
+
+  const isEmployee = user.role === 'employee'
+
+  return (
+    <div className="min-h-screen bg-white text-ink">
+
+      <Header
+        page={page}
+        setPage={setPage}
+        onBook={() => onBook()}
+        user={user}
+        onLogout={onLogout}
+      />
+
+      {/* ==============================================
+          HOMEOWNER ONLY
+          ============================================== */}
+
+      {!isEmployee && page === 'home' && (
+        <HomePage
+          setPage={setPage}
+          onBook={onBook}
+        />
+      )}
+
+      {!isEmployee && page === 'services' && (
+        <ServicesPage
+          onBook={onBook}
+        />
+      )}
+
+      {/* ==============================================
+          DASHBOARD
+          BOTH ROLES
+          ============================================== */}
+
+      {page === 'dashboard' && (
+        <DashboardPage
+          requests={requests}
+          setRequests={setRequests}
+          bookings={bookings}
+          setBookings={setBookings}
+          onBook={onBook}
+          user={user}
+        />
+      )}
+
+      {/* ==============================================
+          EMPLOYEE SCHEDULE
+          ============================================== */}
+
+      {isEmployee && page === 'schedule' && (
+        <main className="min-h-[75vh] bg-[#f7f8f4]">
+
+          <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-14">
+
+            <p className="eyebrow">
+              MAINTENANCE WORKER PORTAL
+            </p>
+
+            <h1 className="mt-2 font-serif text-4xl text-forest">
+              Schedule
+            </h1>
+
+            <p className="mt-3 text-sm text-[#738078]">
+              View your upcoming maintenance visits.
+            </p>
+
+            <div className="mt-8 rounded-2xl border border-[#e7eae3] bg-white p-7">
+
+              <div className="flex items-center gap-3">
+
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#e9eef8] text-forest">
+                  <CalendarDays size={20} />
+                </div>
+
+                <div>
+                  <h2 className="font-serif text-xl text-forest">
+                    Upcoming schedule
+                  </h2>
+
+                  <p className="mt-1 text-xs text-[#89928b]">
+                    Your assigned visits will appear here.
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="mt-6 rounded-xl bg-[#f5f6f0] p-6 text-center">
+
+                <CalendarDays
+                  size={30}
+                  className="mx-auto text-[#9aa29b]"
+                />
+
+                <p className="mt-3 text-sm text-[#89928b]">
+                  Schedule management will be connected to your
+                  assigned jobs.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
+      )}
+
+      {/* ==============================================
+          EMPLOYEE PROFILE
+          ============================================== */}
+
+      {isEmployee && page === 'profile' && (
+        <main className="min-h-[75vh] bg-[#f7f8f4]">
+
+          <div className="mx-auto max-w-3xl px-5 py-10 md:px-8 md:py-14">
+
+            <p className="eyebrow">
+              EMPLOYEE PROFILE
+            </p>
+
+            <h1 className="mt-2 font-serif text-4xl text-forest">
+              Your profile
+            </h1>
+
+            <div className="mt-8 rounded-2xl border border-[#e7eae3] bg-white p-7">
+
+              <div className="flex items-center gap-4">
+
+                <div className="grid h-14 w-14 place-items-center rounded-full bg-[#eaf0e4] text-lg font-semibold text-forest">
+                  {user.name?.charAt(0)?.toUpperCase()}
+                </div>
+
+                <div>
+                  <h2 className="font-serif text-2xl text-forest">
+                    {user.name}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-[#89928b]">
+                    Maintenance Employee
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="mt-7 grid gap-4 sm:grid-cols-2">
+
+                <div className="rounded-xl bg-[#f5f6f0] p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                    Name
+                  </p>
+
+                  <p className="mt-2 text-sm font-semibold text-forest">
+                    {user.name}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-[#f5f6f0] p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                    Email
+                  </p>
+
+                  <p className="mt-2 text-sm font-semibold text-forest">
+                    {user.email}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-[#f5f6f0] p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#89928b]">
+                    Role
+                  </p>
+
+                  <p className="mt-2 text-sm font-semibold text-forest">
+                    Maintenance Employee
+                  </p>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
+      )}
+
+      {/* ==============================================
+          FOOTER
+          ============================================== */}
+
+      <Footer
+        setPage={setPage}
+      />
+
+      {/* ==============================================
+          BOOKING MODAL
+          HOMEOWNER ONLY
+          ============================================== */}
+
+      {!isEmployee && (
+        <BookingModal
+          key={preselected}
+          open={bookingOpen}
+          onClose={() => setBookingOpen(false)}
+          preselected={preselected}
+          onSubmit={submitBooking}
+        />
+      )}
+
+    </div>
+  )
 }
 export default App
