@@ -429,16 +429,39 @@ function HomeownerDashboard({
             {
               label: 'Property status',
               value: 'Looking good',
-              sub: 'Last checked Oct 10',
+              sub: 'Last checked Nov 7',
               icon: House,
               tint: 'bg-[#eaf0e4]'
             },
             {
-              label: 'Next visit',
-              value: 'Oct 21',
-              sub: 'Routine inspection',
-              icon: CalendarDays,
-              tint: 'bg-[#e9eef8]'
+             
+               label: 'Next visit',
+               value: (() => {
+              const upcoming = requests
+              .filter(
+                        r =>
+                        r.preferred_date &&
+                        r.status !== 'completed' &&
+                        r.status !== 'cancelled'
+                       )
+              .sort(
+                        (a, b) =>
+                       new Date(a.preferred_date) -
+                       new Date(b.preferred_date)
+                     )[0]
+
+              return upcoming
+                 ? new Date(`${upcoming.preferred_date}T12:00:00`)
+               .toLocaleDateString('en-IN', {
+                           day: 'numeric',
+                             month: 'short'
+                                             })
+                  : '—'
+  })(),
+  sub: 'Upcoming maintenance visit',
+  icon: CalendarDays,
+  tint: 'bg-[#e9eef8]'
+},
             },
             {
               label: 'Open requests',
