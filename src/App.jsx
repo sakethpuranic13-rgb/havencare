@@ -322,8 +322,6 @@ function HomeownerDashboard({
 }) {
   const [filter, setFilter] = useState('All')
 
-  // Convert Supabase request data into the format
-  // this original dashboard was designed to use.
   const displayRequests = useMemo(() => {
     return requests.map(request => ({
       ...request,
@@ -351,7 +349,7 @@ function HomeownerDashboard({
           : request.status === 'assigned'
             ? 'Scheduled'
             : request.status === 'accepted'
-              ? 'Scheduled'
+              ? 'Accepted'
               : request.status === 'in_progress'
                 ? 'In progress'
                 : request.status === 'completed'
@@ -398,12 +396,36 @@ function HomeownerDashboard({
     )
   }
 
+  const nextVisit = requests
+    .filter(
+      r =>
+        r.preferred_date &&
+        r.status !== 'completed' &&
+        r.status !== 'cancelled'
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.preferred_date) -
+        new Date(b.preferred_date)
+    )[0]
+
+  const nextVisitDate = nextVisit
+    ? new Date(`${nextVisit.preferred_date}T12:00:00`)
+        .toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short'
+        })
+    : '—'
+
   return (
     <main className="min-h-[75vh] bg-[#f7f8f4]">
+
       <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-14">
 
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+
           <div>
+
             <p className="eyebrow">
               HOMEOWNER PORTAL
             </p>
@@ -415,12 +437,14 @@ function HomeownerDashboard({
             <p className="mt-3 text-sm text-[#738078]">
               Here's what's happening with your home.
             </p>
+
           </div>
 
           <Button onClick={() => onBook()}>
             <Plus size={17} />
             Request a service
           </Button>
+
         </div>
 
         <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -429,39 +453,16 @@ function HomeownerDashboard({
             {
               label: 'Property status',
               value: 'Looking good',
-              sub: 'Last checked Nov 7',
+              sub: 'Last checked Oct 30',
               icon: House,
               tint: 'bg-[#eaf0e4]'
             },
             {
-             
-               label: 'Next visit',
-               value: (() => {
-              const upcoming = requests
-              .filter(
-                        r =>
-                        r.preferred_date &&
-                        r.status !== 'completed' &&
-                        r.status !== 'cancelled'
-                       )
-              .sort(
-                        (a, b) =>
-                       new Date(a.preferred_date) -
-                       new Date(b.preferred_date)
-                     )[0]
-
-              return upcoming
-                 ? new Date(`${upcoming.preferred_date}T12:00:00`)
-               .toLocaleDateString('en-IN', {
-                           day: 'numeric',
-                             month: 'short'
-                                             })
-                  : '—'
-  })(),
-  sub: 'Upcoming maintenance visit',
-  icon: CalendarDays,
-  tint: 'bg-[#e9eef8]'
-},
+              label: 'Next visit',
+              value: nextVisitDate,
+              sub: 'Upcoming maintenance visit',
+              icon: CalendarDays,
+              tint: 'bg-[#e9eef8]'
             },
             {
               label: 'Open requests',
@@ -525,6 +526,7 @@ function HomeownerDashboard({
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 
               <div>
+
                 <h2 className="font-serif text-2xl text-forest">
                   Maintenance requests
                 </h2>
@@ -532,6 +534,7 @@ function HomeownerDashboard({
                 <p className="mt-1 text-xs text-[#89928b]">
                   Your submitted service requests
                 </p>
+
               </div>
 
               <select
@@ -728,6 +731,7 @@ function HomeownerDashboard({
         </p>
 
       </div>
+
     </main>
   )
 }
